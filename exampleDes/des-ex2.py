@@ -1,8 +1,12 @@
-KEY = "F7AC7D10C9F8145F"
-M = "TestStringPlease@DontIgnore!"
+import socket
+import multiprocessing
+import time
+
+KEY = "746f6d616e646a"
+message = "medusa"
 
 # Permuted Choice 1
-PC1 = (57, 49, 41, 33, 25, 17, 9,
+permutedChoice1 = (57, 49, 41, 33, 25, 17, 9,
        1, 58, 50, 42, 34, 26, 18,
        10, 2, 59, 51, 43, 35, 27,
        19, 11, 3, 60, 52, 44, 36,
@@ -12,7 +16,7 @@ PC1 = (57, 49, 41, 33, 25, 17, 9,
        21, 13, 5, 28, 20, 12, 4)
 
 # Permuted Choice 2
-PC2 = (14, 17, 11, 24, 1, 5,
+permutedChoice2 = (14, 17, 11, 24, 1, 5,
        3, 28, 15, 6, 21, 10,
        23, 19, 12, 4, 26, 8,
        16, 7, 27, 20, 13, 2,
@@ -22,7 +26,7 @@ PC2 = (14, 17, 11, 24, 1, 5,
        46, 42, 50, 36, 29, 32)
 
 # Initial Permutation
-IP = (58, 50, 42, 34, 26, 18, 10, 2,
+initialPermutation = (58, 50, 42, 34, 26, 18, 10, 2,
       60, 52, 44, 36, 28, 20, 12, 4,
       62, 54, 46, 38, 30, 22, 14, 6,
       64, 56, 48, 40, 32, 24, 16, 8,
@@ -32,7 +36,7 @@ IP = (58, 50, 42, 34, 26, 18, 10, 2,
       63, 55, 47, 39, 31, 23, 15, 7)
 
 # Expansion
-E = (32, 1, 2, 3, 4, 5,
+expansion = (32, 1, 2, 3, 4, 5,
      4, 5, 6, 7, 8, 9,
      8, 9, 10, 11, 12, 13,
      12, 13, 14, 15, 16, 17,
@@ -42,7 +46,7 @@ E = (32, 1, 2, 3, 4, 5,
      28, 29, 30, 31, 32, 1)
 
 # Substitution Boxes
-SBOX = {
+substitutionBoxes = {
     0: (14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7,
         0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8,
         4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0,
@@ -85,7 +89,7 @@ SBOX = {
     }
 
 # Permutation
-P = (16, 7, 20, 21,
+permutation = (16, 7, 20, 21,
      29, 12, 28, 17,
      1, 15, 23, 26,
      5, 18, 31, 10,
@@ -95,7 +99,7 @@ P = (16, 7, 20, 21,
      22, 11, 4, 25)
 
 # Final Permutation
-IP_FINAL = (40, 8, 48, 16, 56, 24, 64, 32,
+permutationFinal = (40, 8, 48, 16, 56, 24, 64, 32,
             39, 7, 47, 15, 55, 23, 63, 31,
             38, 6, 46, 14, 54, 22, 62, 30,
             37, 5, 45, 13, 53, 21, 61, 29,
@@ -104,22 +108,22 @@ IP_FINAL = (40, 8, 48, 16, 56, 24, 64, 32,
             34, 2, 42, 10, 50, 18, 58, 26,
             33, 1, 41, 9, 49, 17, 57, 25)
 
-def binary(i, length):
+def binary(index, length):
     # Convert an int to binary while keeping leading zeroes
-    return bin(i)[2:].zfill(length)
+    return bin(index)[2:].zfill(length)
 
-def hex2int(h):
-    return int(h, 16)
+def hex2int(hex):
+    return int(hex, 16)
 
-def int2hex(i):
-    return hex(i)[2:]
+def int2hex(index):
+    return hex(index)[2:]
 
-def str2int(s):
-    s = s.encode()
-    return int(s.hex(), 16)
+def str2int(string):
+    string = string.encode()
+    return int(string.hex(), 16)
 
-def hex2str(h):
-    return bytearray.fromhex(h).decode()
+def hex2str(hex):
+    return bytearray.fromhex(hex).decode()
 
 def lst2int(lst):
     # Binary list to int
@@ -133,8 +137,8 @@ def split(block, length):
 def permute(block, length, table):
     result = []
     binary_block = binary(block, length)
-    for i in range(len(table)):
-        result.append(binary_block[table[i] - 1])
+    for index in range(len(table)):
+        result.append(binary_block[table[index] - 1])
     return lst2int(result)
 
 def rol(block, bits, length):
@@ -148,17 +152,17 @@ def calc_sub_keys(c0, d0):
 
     keys.append((c0, d0))
 
-    for i in range(16):
-        bits = left_shifts[i]  
-        c = rol(keys[i][0], bits, 28)
-        d = rol(keys[i][1], bits, 28)
-        keys.append((c, d))
+    for index in range(16):
+        bits = left_shifts[index]  
+        cipher = rol(keys[index][0], bits, 28)
+        d = rol(keys[index][1], bits, 28)
+        keys.append((cipher, d))
 
     del keys[0]
 
-    for i, (c, d) in enumerate(keys):
-        cd = (c << 28) + d
-        keys[i] = permute(cd, 56, PC2)
+    for index, (cipher, d) in enumerate(keys):
+        cd = (cipher << 28) + d
+        keys[index] = permute(cd, 56, permutedChoice2)
         
     return keys
 
@@ -168,12 +172,12 @@ def split_r(r):
     return [(r >> x) & 63 for x in range(42, -1, -6)]
 
 def apply_sub_keys(l, r, subkeys, decrypt):
-    for i in range(16):     
-        if decrypt: i = 15-i
+    for index in range(16):     
+        if decrypt: index = 15-index
 
         r_last = r
-        r = permute(r, 32, E)
-        r ^= subkeys[i]
+        r = permute(r, 32, expansion)
+        r ^= subkeys[index]
         
         blocks = split_r(r)
         
@@ -183,7 +187,7 @@ def apply_sub_keys(l, r, subkeys, decrypt):
             # Col - 2nd through 5th bits of block, so 30 (0b11110)
             col = (30 & block) >> 1
             # Tuples are one-dimensional therefore row = 16*row
-            blocks[j] = SBOX[j][16*row+col]
+            blocks[j] = substitutionBoxes[j][16*row+col]
 
         # Concentrate blocks
         r = 0
@@ -192,35 +196,35 @@ def apply_sub_keys(l, r, subkeys, decrypt):
             r += (block << j)
             j -= 4
 
-        r = permute(r, 32, P)
+        r = permute(r, 32, permutation)
         r ^= l
         l = r_last
         
     cipher_block = (r << 32) + l
-    cipher_block = permute(cipher_block, 64, IP_FINAL)
+    cipher_block = permute(cipher_block, 64, permutationFinal)
     return cipher_block
 
-def encrypt(m, key):
+def encrypt(plainText, key):
     key = hex2int(key)
-    blocks = des(m, key)
+    blocks = des(plainText, key)
 
-    c = []
+    cipher = []
     for block in blocks:
-        c.append(int2hex(block))
-    return ''.join(c)
+        cipher.append(int2hex(block))
+    return ''.join(cipher)
         
 
-def decrypt(c, key):
+def decrypt(cipher, key):
     key = hex2int(key)
-    blocks = des(c, key, True)
+    blocks = des(cipher, key, True)
 
-    m = []
+    plainText = []
     for block in blocks:
-        m.append(hex2str(int2hex(block)))
-    return ''.join(m)
+        plainText.append(hex2str(int2hex(block)))
+    return ''.join(plainText)
 
-def des(m, key, decrypt=False):
-    key = permute(key, 64, PC1)
+def des(plainText, key, decrypt=False):
+    key = permute(key, 64, permutedChoice1)
     c0, d0 = split(key, 28)
 
     sub_keys = calc_sub_keys(c0, d0)
@@ -231,7 +235,7 @@ def des(m, key, decrypt=False):
     # 8 character blocks when encrypting.
     # 16 character blocks (hex) when decrypting.
     n = 8 if not decrypt else 16
-    blocks = [m[i:i+n] for i in range(0, len(m), n)]
+    blocks = [plainText[index:index+n] for index in range(0, len(plainText), n)]
         
     for block in blocks:
         if decrypt:
@@ -239,7 +243,7 @@ def des(m, key, decrypt=False):
         else:
             block = str2int(block)
         
-        block = permute(block, 64, IP)
+        block = permute(block, 64, initialPermutation)
         l, r = split(block, 32)
         cipher_block = apply_sub_keys(l, r, sub_keys, decrypt)
         
@@ -247,10 +251,77 @@ def des(m, key, decrypt=False):
     return cipher_blocks
 
 if __name__ == "__main__":
-    print("Message: " + M)
+    print("Message: " + message)
     
-    c = encrypt(M, KEY)
-    print("Ciphertext (hex): " + c)
+    cipher = encrypt(message, KEY)
+    print("Ciphertext (hex): " + cipher)
     
-    m = decrypt(c, KEY)
-    print("Plaintext: " + m)
+    plainText = decrypt(cipher, KEY)
+    print("Plaintext: " + plainText)
+
+    
+def sender(message, key, receiver_ip, receiver_port):
+    print("Sender:")
+    print("Original Message:", message)
+    
+    # Encrypt the message
+    ciphertext = encrypt(message, key)
+    print("Encrypted Message (Ciphertext):", ciphertext)
+    
+    # Send the ciphertext to the receiver
+    send_to_receiver(ciphertext, receiver_ip, receiver_port)
+
+def receiver(receiver_ip, receiver_port, key):
+    print("\nReceiver:")
+    
+    # Listen for incoming connection
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((receiver_ip, receiver_port))
+    server_socket.listen(1)
+    
+    print("Waiting for connection...")
+    connection, address = server_socket.accept()
+    print(f"Connection from {address}")
+    
+    # Receive ciphertext
+    ciphertext = connection.recv(4096).decode()
+    print("Received Ciphertext:", ciphertext)
+    
+    # Decrypt the ciphertext
+    decrypted_message = decrypt(ciphertext, key)
+    print("Decrypted Message (Plaintext):", decrypted_message)
+    
+    # Close the connection
+    connection.close()
+
+def send_to_receiver(data, receiver_ip, receiver_port):
+    # Create a socket to send data to the receiver
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # Connect to the receiver
+    client_socket.connect((receiver_ip, receiver_port))
+    
+    # Send the data
+    client_socket.sendall(data.encode())
+    
+    # Close the connection
+    client_socket.close()
+
+if __name__ == "__main__":
+    receiver_ip = "192.168.3.220"
+    receiver_port = 8080
+    key = KEY
+    
+
+    # Create separate processes for sender and receiver
+    sender_process = multiprocessing.Process(target=sender, args=(message, key, receiver_ip, receiver_port))
+    receiver_process = multiprocessing.Process(target=receiver, args=(receiver_ip, receiver_port, key))
+
+    # Start both processes
+    receiver_process.start()
+    time.sleep(1)  # Add a delay to ensure the receiver is ready before the sender starts
+    sender_process.start()
+
+    # Wait for both processes to finish
+    sender_process.join()
+    receiver_process.join()
