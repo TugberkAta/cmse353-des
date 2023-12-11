@@ -260,68 +260,51 @@ if __name__ == "__main__":
     print("Plaintext: " + plainText)
 
     
-def sender(message, key, receiver_ip, receiver_port):
-    print("Sender:")
-    print("Original Message:", message)
-    
-    # Encrypt the message
-    ciphertext = encrypt(message, key)
-    print("Encrypted Message (Ciphertext):", ciphertext)
-    
-    # Send the ciphertext to the receiver
-    send_to_receiver(ciphertext, receiver_ip, receiver_port)
+def server():
+    host = '127.0.0.1'
+    port = 12345
 
-def receiver(receiver_ip, receiver_port, key):
-    print("\nReceiver:")
-    
-    # Listen for incoming connection
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((receiver_ip, receiver_port))
+    server_socket.bind((host, port))
     server_socket.listen(1)
-    
-    print("Waiting for connection...")
-    connection, address = server_socket.accept()
-    print(f"Connection from {address}")
-    
-    # Receive ciphertext
-    ciphertext = connection.recv(4096).decode()
-    print("Received Ciphertext:", ciphertext)
-    
-    # Decrypt the ciphertext
-    decrypted_message = decrypt(ciphertext, key)
-    print("Decrypted Message (Plaintext):", decrypted_message)
-    
-    # Close the connection
-    connection.close()
 
-def send_to_receiver(data, receiver_ip, receiver_port):
-    # Create a socket to send data to the receiver
+    print(f"Server listening on {host}:{port}")
+
+    while True:
+        client_socket, addr = server_socket.accept()
+        print(f"Connection from {addr}")
+
+        data = client_socket.recv(1024).decode()
+        print(f"Received encrypted message: {data}")
+
+        decrypted_message = decrypt(data, KEY)
+        print(f"Decrypted message: {decrypted_message}")
+
+        client_socket.close()
+
+def client(message):
+    host = '127.0.0.1'
+    port = 12345
+
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    # Connect to the receiver
-    client_socket.connect((receiver_ip, receiver_port))
-    
-    # Send the data
-    client_socket.sendall(data.encode())
-    
-    # Close the connection
+    client_socket.connect((host, port))
+
+    encrypted_message = encrypt(message, KEY)
+    print(f"Original message: {message}")
+    print(f"Encrypted message: {encrypted_message}")
+
+    client_socket.send(encrypted_message.encode())
     client_socket.close()
 
-if __name__ == "__main__":
-    receiver_ip = "192.168.3.220"
-    receiver_port = 8080
-    key = KEY
-    
+if __name__ == '__main__':
+    message_to_send = "Hello, this is a secret message!"
 
-    # Create separate processes for sender and receiver
-    sender_process = multiprocessing.Process(target=sender, args=(message, key, receiver_ip, receiver_port))
-    receiver_process = multiprocessing.Process(target=receiver, args=(receiver_ip, receiver_port, key))
+    server_process = multiprocessing.Process(target=server)
+    client_process = multiprocessing.Process(target=client, args=(message_to_send,))
 
-    # Start both processes
-    receiver_process.start()
-    time.sleep(1)  # Add a delay to ensure the receiver is ready before the sender starts
-    sender_process.start()
+    server_process.start()
+    # Add a delay to ensure the server is ready before the client sends the message
+    time.sleep(1)
+    client_process.start()
 
-    # Wait for both processes to finish
-    sender_process.join()
-    receiver_process.join()
+    server_process.join()
